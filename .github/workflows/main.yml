@@ -1,0 +1,41 @@
+name: ARQ CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Generate Prisma Client
+      run: npx prisma generate
+
+    - name: Run Linter
+      run: npm run lint
+
+    - name: Type Check & Build Next.js App
+      run: npm run build
+      env:
+        # Provide dummy env vars needed for build if applicable
+        # (Though Next.js build usually doesn't need DB connected if pages are dynamic)
+        DATABASE_URL: "file:./dev.db"
+        JWT_SECRET: "dummy-secret-for-build"
+
+    - name: Security Scan (Audit)
+      run: npm audit --audit-level=high

@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ==========================================
+// MILESTONE 1: AUTH & ORG
+// ==========================================
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String?
+  passwordHash   String?       // Using simple JWT auth instead of NextAuth for pure control as spec indicates
+  role           String        @default("STUDENT") // "STUDENT", "FACILITATOR", "MAKER", "ADMIN"
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  profile        Profile?      @relation("UserProfile")
+  learners       Profile[]     @relation("FacilitatorLearners")
+  journeys       Journey[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+// ==========================================
+// MILESTONE 2: CURRICULUM ENGINE
+// ==========================================
+
+model Phase {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int      @default(0)
+  themes      Theme[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Theme {
+  id          String   @id @default(cuid())
+  phaseId     String
+  phase       Phase    @relation(fields: [phaseId], references: [id])
+  title       String
+  description String?
+  order       Int      @default(0)
+  topics      Topic[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Topic {
+  id               String   @id @default(cuid())
+  themeId          String
+  theme            Theme    @relation(fields: [themeId], references: [id])
+  title            String
+  centralQuestion  String?
+  centralDiscovery String?
+  difficulty       String   @default("foundational") // "foundational", "intermediate", "advanced"
+  order            Int      @default(0)
+  lessons          Lesson[]
+  journeys         Journey[]
+  prerequisites    Topic[]  @relation("TopicPrerequisites")
+  prerequisiteFor  Topic[]  @relation("TopicPrerequisites")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  topicId     String
+  topic       Topic    @relation(fields: [topicId], references: [id])
+  title       String
+  description String?
+  order       Int      @default(0)
+  blocks      Block[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Block {
+  id         String   @id @default(cuid())
+  lessonId   String
+  lesson     Lesson   @relation(fields: [lessonId], references: [id])
+  blockType  String   // "scripture", "discussion", "story", "video", "text" etc.
+  content    String   // Storing JSON string or rich text payload
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Learner specific data
+model Profile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation("UserProfile", fields: [userId], references: [id])
+  facilitatorId    String?
+  facilitator      User?    @relation("FacilitatorLearners", fields: [facilitatorId], references: [id])
+  age              Int?
+  location         String?
+  context          String?
+  learningSignals  String?  // Stored as JSON array string: "['evidence-oriented', 'question-driven']"
+  confidenceLevels String?  // Stored as JSON string: "{ 'foundational': 0.6 }"
+  primaryQuestion  String?
+  aiInsights       String?  // Scaffolding for AI-generated summary of learner style
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Journey {
+  id             String   @id @default(cuid())
+  studentId      String
+  student        User     @relation(fields: [studentId], references: [id])
+  topicId        String
+  topic          Topic    @relation(fields: [topicId], references: [id])
+  status         String   @default("in-progress") // "in-progress", "completed", "paused"
+  currentLessonId String?
+  currentBlockId  String?
+  adaptiveNotes   String?  // Scaffolding for AI-suggested path adjustments
+  startedAt      DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
