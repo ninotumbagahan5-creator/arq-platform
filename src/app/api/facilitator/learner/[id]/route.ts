@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { decrypt } from '@/lib/auth';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('session');
   if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +18,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const studentId = params.id;
+    const studentId = resolvedParams.id;
 
     // Verify this learner belongs to this facilitator
     const learner = await prisma.user.findUnique({
